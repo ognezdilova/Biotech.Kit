@@ -4,6 +4,7 @@ import csv
 from datetime import datetime
 import os
 
+# List available COM ports
 def list_available_ports():
     """List all available COM ports."""
     ports = serial.tools.list_ports.comports()
@@ -14,11 +15,13 @@ def list_available_ports():
         available.append(port.device)
     return available
 
-def read_emg_data(port='COM4', baudrate=115200, output_dir='data/recordings'):
-    """
+"""
     Read EMG data from serial port and save to CSV file.
     Data format: timestamp,raw_value
     """
+
+def read_emg_data(port='COM4', baudrate=115200, output_dir='data/recordings'):
+    
     # Check if port exists
     available_ports = list_available_ports()
     if not available_ports:
