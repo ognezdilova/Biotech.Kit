@@ -1,4 +1,4 @@
-## Bioеtech Kit (BK)
+## Biotech Kit (BK)
 
 ## Overview
 
@@ -20,22 +20,24 @@ This project is currently under continuous development. Features, architecture, 
 
 ## Current Features
 
-* Real-time biomedical signal acquisition
-* Serial communication with embedded hardware
-* Modular signal source architecture
-* Signal recording and data storage
-* Signal processing pipeline development
-* Real-time visualization (in development)
+* **Modular Architecture**: Abstract interfaces for devices, parsers, and data sinks
+* **Real-time EMG Acquisition**: Live streaming from ESP32-based hardware over serial (UART)
+* **CSV Recording**: Timestamped data files with automatic directory management
+* **Multiple Data Sinks**: Support for simultaneous data outputs (CSV, future: real-time plots, databases)
+* **Robust Serial Communication**: Hardware flow control disabled for Windows compatibility
+* **Progress Monitoring**: Real-time sample counting during acquisition
+* **Error Handling**: Graceful handling of malformed data and connection issues
 
 ---
 
 ## Planned Features
 
-* Advanced filtering and signal processing modules
+* Real-time visualization and filtering
+* Advanced signal processing modules (bandpass, notch filters)
 * Multi-channel biosignal acquisition
-* Data replay functionality
-* Machine learning integration
-* Hardware abstraction layer for different biomedical sensors
+* Data replay functionality from recorded files
+* Machine learning integration for signal classification
+* Additional device implementations (BLE, USB, file replay)
 * User interface for experiment monitoring and analysis
 
 ---
@@ -44,43 +46,78 @@ This project is currently under continuous development. Features, architecture, 
 
 ### Software
 
-* Python
-* NumPy
-* SciPy
-* Matplotlib
-* Git / GitHub
+* **Python 3.10+** (uses modern type hints)
+* **PySerial 3.5** for serial communication
+* Git / GitHub for version control
 
 ### Hardware
 
-* ESP32-based microcontroller
-* Biomedical signal acquisition modules
+* **ESP32 microcontroller** (tested on real hardware)
+* EMG signal acquisition front-end
 * Surface electrodes
 
 ---
 
 ## Project Structure
 
-The project follows a modular architecture designed for scalability:
+The project follows a **dependency inversion** architecture with abstract interfaces:
 
 ```
-BDK/
+BiotechKit/
 │
 ├── app/
-│   ├── acquisition/      # Signal acquisition modules
-│   ├── processing/       # Signal processing pipeline
-│   ├── visualization/    # Data visualization tools
-│   └── storage/          # Recording and replay functionality
+│   ├── main.py                    # Entry point for EMG acquisition
+│   ├── core/                      # Abstract interfaces (ABC)
+│   │   ├── device.py              # AcquisitionDevice interface
+│   │   ├── parser.py              # SignalParser interface
+│   │   ├── sink.py                # DataSink interface
+│   │   ├── session.py             # Orchestrates device → parser → sinks
+│   │   └── models.py              # Sample dataclass
+│   ├── devices/                   # Concrete device implementations
+│   │   └── serial_device.py       # Serial/UART device
+│   ├── parsers/                   # Concrete parser implementations
+│   │   └── esp32_emg_parser.py    # ESP32 CSV format parser
+│   └── storage/                   # Concrete sink implementations
+│       └── csv_sink.py            # CSV file writer
 │
+├── data/
+│   └── recordings/                # Timestamped CSV output files
+├── firmware/
+│   └── sketch_jul15a/             # ESP32 Arduino firmware
 ├── tests/
-├── docs/
 └── README.md
 ```
 
 ---
 
+## How to Run
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Connect your ESP32** to a USB port and verify it appears (e.g., COM4 on Windows)
+
+3. **Update the port** in `app/main.py` if needed:
+   ```python
+   device = SerialDevice(port="COM4", baudrate=115200)
+   ```
+
+4. **Run the acquisition:**
+   ```bash
+   python -m app.main
+   ```
+
+5. **Stop recording** with `Ctrl+C`
+
+Data will be saved to `data/recordings/emg_data_YYYYMMDD_HHMMSS.csv`
+
+---
+
 ## Development Approach
 
-BDK is developed using an iterative engineering workflow:
+BK is developed using an iterative engineering workflow:
 
 * Feature-based Git branches
 * Incremental commits

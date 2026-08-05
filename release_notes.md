@@ -1,21 +1,53 @@
-## Version 0.0.1
+## Version 0.1.0 - Modular Architecture Refactor
 
 ### Major Changes
-- **ESP32 Firmware**: Modified to stream both timestamp (`t_next`) and raw ADC values in CSV format (timestamp,raw_value) over serial at 115200 baud
-- **Python Data Recorder**: Created `main.py` to read serial data from COM4, parse CSV format, and save to timestamped CSV files in `data/recordings/`
-- **Automatic Port Detection**: Added function to list and validate available COM ports before attempting connection
+- **Modular Architecture**: Complete refactor using dependency inversion with abstract base classes
+  - `AcquisitionDevice` interface for all data sources (serial, BLE, file replay, etc.)
+  - `SignalParser` interface for protocol-specific parsing
+  - `DataSink` interface for output destinations (CSV, plots, databases, etc.)
+  - `AcquisitionSession` orchestrator that ties device → parser → sinks together
+- **Core Abstractions**: Created `app/core/` module with abstract interfaces:
+  - `device.py`: Device abstraction with `open()`, `close()`, `read_line()`
+  - `parser.py`: Parser abstraction with `parse()` method
+  - `sink.py`: Sink abstraction with `open()`, `write()`, `close()`
+  - `session.py`: Session orchestration with error handling
+  - `models.py`: Shared `Sample` dataclass with multi-channel support
+- **Concrete Implementations**: Separated interface from implementation
+  - `devices/serial_device.py`: Serial/UART device with port enumeration
+  - `parsers/esp32_emg_parser.py`: CSV format parser for ESP32 firmware
+  - `storage/csv_sink.py`: CSV file writer with automatic flushing
+- **Tested on Real Hardware**: All components validated with live ESP32 EMG acquisition
+
+### Architecture Benefits
+- Easy to swap devices (serial → BLE → file replay) without touching parser or sink code
+- Multiple sinks can run simultaneously (CSV + real-time plot + database)
+- New protocols can be added by implementing `SignalParser` without modifying session logic
+- Clean separation of concerns following SOLID principles
 
 ### Minor Changes
-- Added `serial.tools.list_ports` integration for COM port enumeration and validation
-- Implemented automatic directory creation for recording output (`data/recordings/`)
-- Added timestamped filename generation for EMG data files (`emg_data_YYYYMMDD_HHMMSS.csv`)
-- Display progress counter every 1000 samples during recording
-- Added CSV header row for better data organization (timestamp, raw_value)
+- Added type hints throughout (Python 3.10+ union syntax)
+- Context manager support for devices and sinks
+- Progress reporting every 1000 samples
+- Automatic CSV file timestamping (`emg_data_YYYYMMDD_HHMMSS.csv`)
+- Port validation before connection attempt
+- Graceful handling of malformed data lines
 
 ### Fixed
-- Serial port freezing issues on Windows by disabling hardware flow control (dsrdtr, rtscts, xonxoff)
-- Port access issues with deferred opening pattern (create Serial object before calling `.open()`)
-- Added write timeout to prevent blocking on write operations
-- Improved error handling for port availability and connection failures
+- Parameter name typo: `sink` → `sinks` in `AcquisitionSession.__init__()`
+- Serial port freezing on Windows (disabled hardware flow control)
+- Write timeout to prevent blocking operations
+- Proper cleanup in exception handling (sinks always closed)
+
+---
+
+## Version 0.0.1 - Initial Prototype
+
+### Major Changes
+- ESP32 firmware streaming timestamp and raw ADC values in CSV format
+- Basic Python data recorder with serial communication
+- Automatic port detection and validation
+
+### Fixed
+- Initial serial communication issues on Windows
 
 
