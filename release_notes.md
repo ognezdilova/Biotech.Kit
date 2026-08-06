@@ -6,7 +6,7 @@
   - `SignalParser` interface for protocol-specific parsing
   - `DataSink` interface for output destinations (CSV, plots, databases, etc.)
   - `AcquisitionSession` orchestrator that ties device → parser → sinks together
-- **Core Abstractions**: Created `app/core/` module with abstract interfaces:
+- **Core Abstractions**: Created top-level `core/` package with abstract interfaces:
   - `device.py`: Device abstraction with `open()`, `close()`, `read_line()`
   - `parser.py`: Parser abstraction with `parse()` method
   - `sink.py`: Sink abstraction with `open()`, `write()`, `close()`

@@ -1,8 +1,8 @@
 """Orchestrates the acquisition flow: device -> parser -> sinks."""
 
-from app.core.device import AcquisitionDevice
-from app.core.parser import SignalParser
-from app.core.sink import DataSink
+from core.device import AcquisitionDevice
+from core.parser import SignalParser
+from core.sink import DataSink
 
 
 class AcquisitionSession:

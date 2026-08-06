@@ -67,18 +67,19 @@ BiotechKit/
 │
 ├── app/
 │   ├── main.py                    # Entry point for EMG acquisition
-│   ├── core/                      # Abstract interfaces (ABC)
-│   │   ├── device.py              # AcquisitionDevice interface
-│   │   ├── parser.py              # SignalParser interface
-│   │   ├── sink.py                # DataSink interface
-│   │   ├── session.py             # Orchestrates device → parser → sinks
-│   │   └── models.py              # Sample dataclass
 │   ├── devices/                   # Concrete device implementations
 │   │   └── serial_device.py       # Serial/UART device
 │   ├── parsers/                   # Concrete parser implementations
 │   │   └── esp32_emg_parser.py    # ESP32 CSV format parser
 │   └── storage/                   # Concrete sink implementations
 │       └── csv_sink.py            # CSV file writer
+│
+├── core/                          # Abstract interfaces (ABC)
+│   ├── device.py                  # AcquisitionDevice interface
+│   ├── parser.py                  # SignalParser interface
+│   ├── sink.py                    # DataSink interface
+│   ├── session.py                 # Orchestrates device → parser → sinks
+│   └── models.py                  # Sample dataclass
 │
 ├── data/
 │   └── recordings/                # Timestamped CSV output files

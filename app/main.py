@@ -9,7 +9,7 @@ This will list the available COM ports, connect to the specified device, and sta
 
 import serial
 
-from app.core.session import AcquisitionSession
+from core.session import AcquisitionSession
 from app.devices.serial_device import SerialDevice, list_available_ports
 from app.parsers.esp32_emg_parser import ESP32EMGParser
 from app.storage.csv_sink import CSVSink

@@ -3,7 +3,7 @@
 import serial
 import serial.tools.list_ports
 
-from app.core.device import AcquisitionDevice
+from core.device import AcquisitionDevice
 
 
 def list_available_ports() -> list[str]:

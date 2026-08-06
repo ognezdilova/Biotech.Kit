@@ -4,8 +4,8 @@ Expected raw line format: "<timestamp_us>,<raw_value>"
 Example: "123456,789"
 """
 
-from app.core.models import Sample
-from app.core.parser import SignalParser
+from core.models import Sample
+from core.parser import SignalParser
 
 
 class ESP32EMGParser(SignalParser):

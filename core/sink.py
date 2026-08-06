@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from app.core.models import Sample
+from core.models import Sample
 
 
 class DataSink(ABC):

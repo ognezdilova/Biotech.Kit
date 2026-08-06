@@ -5,8 +5,8 @@ import os
 from datetime import datetime
 from typing import TextIO
 
-from app.core.models import Sample
-from app.core.sink import DataSink
+from core.models import Sample
+from core.sink import DataSink
 
 
 class CSVSink(DataSink):
