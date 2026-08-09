@@ -7,5 +7,5 @@ from dataclasses import dataclass
 class Sample:
     """A single parsed signal sample."""
     timestamp_us: int
-    value: int
+    value: int | float
     channel: int = 0  # placeholder for future multi-channel support
