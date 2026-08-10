@@ -22,23 +22,27 @@ This project is currently under continuous development. Features, architecture, 
 
 * **Modular Architecture**: Abstract interfaces for devices, parsers, and data sinks
 * **Real-time EMG Acquisition**: Live streaming from ESP32-based hardware over serial (UART)
+* **Real-time DSP Processing**: IIR notch and bandpass filters with dual-output (raw + filtered)
+* **Recording Replay**: ReplayDevice for offline analysis and DSP validation
 * **CSV Recording**: Timestamped data files with automatic directory management
 * **Multiple Data Sinks**: Support for simultaneous data outputs (CSV, future: real-time plots, databases)
+* **CLI Port Selection**: Flexible port selection with auto-detection fallback
 * **Robust Serial Communication**: Hardware flow control disabled for Windows compatibility
 * **Progress Monitoring**: Real-time sample counting during acquisition
 * **Error Handling**: Graceful handling of malformed data and connection issues
+* **Validation Tools**: Offline DSP validation and CSV visualization scripts
 
 ---
 
 ## Planned Features
 
-* Real-time visualization and filtering
-* Advanced signal processing modules (bandpass, notch filters)
+* Real-time visualization (matplotlib integration)
+* Advanced signal processing modules (envelope detection, RMS, spectral analysis)
 * Multi-channel biosignal acquisition
-* Data replay functionality from recorded files
 * Machine learning integration for signal classification
-* Additional device implementations (BLE, USB, file replay)
+* Additional device implementations (BLE, USB)
 * User interface for experiment monitoring and analysis
+* Database sink for persistent storage
 
 ---
 
@@ -48,6 +52,10 @@ This project is currently under continuous development. Features, architecture, 
 
 * **Python 3.10+** (uses modern type hints)
 * **PySerial 3.5** for serial communication
+* **SciPy 1.18** for IIR filter design (signal processing)
+* **NumPy 2.5** for numerical operations
+* **Matplotlib 3.11** for signal visualization
+* **Pandas 3.0** for CSV data manipulation
 * Git / GitHub for version control
 
 ### Hardware
@@ -79,7 +87,15 @@ BiotechKit/
 │   ├── parser.py                  # SignalParser interface
 │   ├── sink.py                    # DataSink interface
 │   ├── session.py                 # Orchestrates device → parser → sinks
-│   └── models.py                  # Sample dataclass
+│   ├── models.py                  # Sample dataclass
+│   ├── replay_device.py           # CSV replay device implementation
+│   └── digital_signal_processing/ # DSP layer
+│       ├── dsp_base.py            # Filter ABC, SignalProcessor
+│       └── filters.py             # NotchFilter, BandpassFilter
+│
+├── scripts/
+│   ├── validate_dsp.py            # Offline DSP validation tool
+│   └── view_csv.py                # CSV visualization utility
 │
 ├── data/
 │   └── recordings/                # Timestamped CSV output files
@@ -93,6 +109,8 @@ BiotechKit/
 
 ## How to Run
 
+### Live Acquisition with Real-time DSP
+
 1. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
@@ -100,19 +118,34 @@ BiotechKit/
 
 2. **Connect your ESP32** to a USB port and verify it appears (e.g., COM4 on Windows)
 
-3. **Update the port** in `app/main.py` if needed:
-   ```python
-   device = SerialDevice(port="COM4", baudrate=115200)
-   ```
-
-4. **Run the acquisition:**
+3. **Run the acquisition:**
    ```bash
-   python -m app.main
+   python -m app.main                     # Auto-select first available port
+   python -m app.main --port COM4         # Specify port explicitly
+   python -m app.main --help              # Show all options
    ```
 
-5. **Stop recording** with `Ctrl+C`
+4. **Stop recording** with `Ctrl+C`
 
-Data will be saved to `data/recordings/emg_data_YYYYMMDD_HHMMSS.csv`
+Data will be saved to:
+- `data/recordings/emg_data_YYYYMMDD_HHMMSS.csv` (raw ADC values)
+- `data/recordings/emg_data_YYYYMMDD_HHMMSS_filtered.csv` (notch + bandpass filtered)
+
+### Offline DSP Validation
+
+Validate DSP filters against recorded data:
+```bash
+python -m scripts.validate_dsp data/recordings/emg_data_YYYYMMDD_HHMMSS.csv
+```
+
+This displays side-by-side plots of raw vs. filtered signals.
+
+### CSV Visualization
+
+View recorded data:
+```bash
+python -m scripts.view_csv data/recordings/emg_data_YYYYMMDD_HHMMSS.csv
+```
 
 ---
 

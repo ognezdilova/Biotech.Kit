@@ -1,3 +1,64 @@
+## Version 0.2.0 - DSP Integration and Replay Capability
+
+### Major Changes
+- **Real-time DSP Processing**: Integrated signal processing into live acquisition pipeline
+  - `core/digital_signal_processing/dsp_base.py`: Filter ABC and SignalProcessor for composable filter chains
+  - `core/digital_signal_processing/filters.py`: NotchFilter (IIR, 60Hz powerline rejection) and BandpassFilter (Butterworth, EMG band isolation)
+  - Sample-by-sample causal processing with warm-start via lfilter_zi (no startup transient)
+  - Dual-output architecture: raw samples always preserved, filtered samples to separate sinks
+- **ReplayDevice**: Replay CSV recordings through AcquisitionDevice interface
+  - `core/replay_device.py`: Transparent offline data source for validation and testing
+  - Configurable playback speed (1.0 = real-time, 2.0 = 2x, 0 = max speed)
+  - Fallback synthetic timing via sample_rate parameter when timestamps unavailable
+  - Same interface as live devices - works seamlessly with AcquisitionSession
+- **Enhanced AcquisitionSession**: Support for optional SignalProcessor and processed_sinks
+  - Raw samples always go to `sinks` unmodified (preserves original recordings)
+  - Filtered samples go to `processed_sinks` (separate CSV files with "_filtered" suffix)
+  - Both pipelines run simultaneously during acquisition
+- **Validation Tools**:
+  - `scripts/validate_dsp.py`: Offline DSP validation with matplotlib side-by-side plots
+  - `scripts/view_csv.py`: CSV data viewer with multi-channel support and time-axis reconstruction
+- **CLI Enhancements**: Flexible port selection in app/main.py
+  - Added argparse `--port` flag for explicit port selection
+  - Auto-selects first available port if not specified
+  - Clear feedback about port selection and connection status
+
+### Architecture Changes
+- **Sample.value Type Widening**: Changed from `int` to `int | float`
+  - Raw ADC readings remain int (from parser)
+  - Filtered signal values are float (from SignalProcessor)
+  - Added tech debt note for future RawSample/ProcessedSample split
+- **CSVSink Enhancement**: Added `filename_suffix` parameter
+  - Supports separate output files for raw and filtered data
+  - Format: `emg_data_TIMESTAMP.csv` (raw), `emg_data_TIMESTAMP_filtered.csv` (filtered)
+  - Backward compatible (suffix defaults to empty string)
+
+### Technology Stack Updates
+- Added **SciPy 1.18** for IIR filter design (butter, iirnotch, lfilter)
+- Added **NumPy 2.5** for numerical operations
+- Added **Matplotlib 3.11** for signal visualization
+- Added **Pandas 3.0** for CSV data manipulation
+
+### Hardware-Specific Configuration
+- Added config constants in main.py for ESP32 + BioAmp EXG:
+  - SAMPLE_RATE_HZ = 1000.0
+  - POWERLINE_FREQ_HZ = 60.0 (configurable for 50Hz regions)
+  - EMG_BANDPASS_LOW_HZ = 20.0
+  - EMG_BANDPASS_HIGH_HZ = 400.0
+  - EMG_BANDPASS_ORDER = 4
+
+### Fixed
+- Bug in AcquisitionSession.run(): processed_sinks were closed but never opened
+- ReplayDevice now uses file.seek(0) instead of close/reopen for efficiency
+- Iterator[list[str]] type hint instead of csv.reader for correctness
+
+### Testing
+- Validated DSP filters offline using ReplayDevice + validate_dsp.py
+- Confirmed dual-output (raw + filtered) in live acquisition
+- Tested CLI port selection with auto-detection
+
+---
+
 ## Version 0.1.0 - Modular Architecture Refactor
 
 ### Major Changes
