@@ -12,9 +12,15 @@ from core.sink import DataSink
 class CSVSink(DataSink):
     """Writes samples to a timestamped CSV file."""
 
-    def __init__(self, output_dir: str = "data/recordings", flush_every: int = 1000) -> None:
+    def __init__(
+        self,
+        output_dir: str = "data/recordings",
+        flush_every: int = 1000,
+        filename_suffix: str = "",
+    ) -> None:
         self._output_dir = output_dir
         self._flush_every = flush_every
+        self._filename_suffix = filename_suffix
         self._file: TextIO | None = None
         self._writer: "csv._writer | None" = None
         self._written = 0
@@ -24,7 +30,8 @@ class CSVSink(DataSink):
         os.makedirs(self._output_dir, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.filepath = os.path.join(self._output_dir, f"emg_data_{timestamp}.csv")
+        filename = f"emg_data_{timestamp}{self._filename_suffix}.csv"
+        self.filepath = os.path.join(self._output_dir, filename)
 
         self._file = open(self.filepath, "w", newline="")
         self._writer = csv.writer(self._file)
