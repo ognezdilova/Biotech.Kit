@@ -23,6 +23,9 @@ This project is currently under continuous development. Features, architecture, 
 * **Modular Architecture**: Abstract interfaces for devices, parsers, and data sinks
 * **Real-time EMG Acquisition**: Live streaming from ESP32-based hardware over serial (UART)
 * **Real-time DSP Processing**: IIR notch and bandpass filters with dual-output (raw + filtered)
+* **Block-based Signal Processing**: WindowBuffer for windowed analysis (RMS, FFT-ready)
+* **Windowing & Buffering**: Efficient circular buffering with configurable window sizes and overlap
+* **RMS Processor**: Root-mean-square amplitude computation for muscle activation measurement
 * **Recording Replay**: ReplayDevice for offline analysis and DSP validation
 * **CSV Recording**: Timestamped data files with automatic directory management
 * **Multiple Data Sinks**: Support for simultaneous data outputs (CSV, future: real-time plots, databases)
@@ -30,14 +33,14 @@ This project is currently under continuous development. Features, architecture, 
 * **Robust Serial Communication**: Hardware flow control disabled for Windows compatibility
 * **Progress Monitoring**: Real-time sample counting during acquisition
 * **Error Handling**: Graceful handling of malformed data and connection issues
-* **Validation Tools**: Offline DSP validation and CSV visualization scripts
+* **Validation Tools**: Offline DSP validation, buffering validation, and CSV visualization scripts
 
 ---
 
 ## Planned Features
 
 * Real-time visualization (matplotlib integration)
-* Advanced signal processing modules (envelope detection, RMS, spectral analysis)
+* Advanced signal processing modules (envelope detection, spectral analysis, FFT)
 * Multi-channel biosignal acquisition
 * Machine learning integration for signal classification
 * Additional device implementations (BLE, USB)
@@ -60,7 +63,7 @@ This project is currently under continuous development. Features, architecture, 
 
 ### Hardware
 
-* **ESP32 microcontroller** (tested on real hardware)
+* **ESP32 Nano microcontroller** (tested on real hardware)
 * EMG signal acquisition front-end
 * Surface electrodes
 
@@ -90,18 +93,26 @@ BiotechKit/
 │   ├── models.py                  # Sample dataclass
 │   ├── replay_device.py           # CSV replay device implementation
 │   └── digital_signal_processing/ # DSP layer
-│       ├── dsp_base.py            # Filter ABC, SignalProcessor
-│       └── filters.py             # NotchFilter, BandpassFilter
+│       ├── dsp_base.py            # Filter ABC, SignalProcessor, BlockProcessor ABC
+│       ├── filters.py             # NotchFilter, BandpassFilter
+│       ├── buffering.py           # RingBuffer, Window, WindowBuffer
+│       └── block_processors.py    # RMSProcessor (concrete BlockProcessors)
 │
 ├── scripts/
 │   ├── validate_dsp.py            # Offline DSP validation tool
+│   ├── validate_buffering.py      # Windowing/buffering validation tool
+│   ├── validate_rms.py            # RMS visualization tool
 │   └── view_csv.py                # CSV visualization utility
 │
 ├── data/
 │   └── recordings/                # Timestamped CSV output files
 ├── firmware/
 │   └── sketch_jul15a/             # ESP32 Arduino firmware
-├── tests/
+│
+├── release_notes.md
+│
+├── requirements.txt
+│
 └── README.md
 ```
 
@@ -139,6 +150,17 @@ python -m scripts.validate_dsp data/recordings/emg_data_YYYYMMDD_HHMMSS.csv
 ```
 
 This displays side-by-side plots of raw vs. filtered signals.
+
+### Windowing & Buffering Validation
+
+Validate the windowing system with recorded data:
+```bash
+python -m scripts.validate_buffering data/recordings/emg_data_YYYYMMDD_HHMMSS.csv
+python -m scripts.validate_buffering data/recordings/emg_data_YYYYMMDD_HHMMSS.csv --window-size 256 --hop-size 128
+python -m scripts.validate_buffering data/recordings/emg_data_YYYYMMDD_HHMMSS.csv --channel 0
+```
+
+This replays recorded data through the WindowBuffer pipeline and displays per-window statistics (sample rate, min/max/mean values, RMS). The buffering layer uses a circular buffer to create fixed-size, optionally overlapping windows from the continuous signal stream - essential for block-based analysis like FFT and RMS computation.
 
 ### CSV Visualization
 
