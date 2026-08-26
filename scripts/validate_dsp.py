@@ -2,7 +2,7 @@
 visually compare raw vs. filtered signal, without touching live hardware.
 
 Usage:
-    python -m scripts.validate_dsp data/recordings/emg_data_20260805.csv
+    python -m scripts.validate_dsp data/recordings/emg_data_YYYYMMDD_HHMMSS.csv
 """
 
 import sys

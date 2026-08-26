@@ -2,9 +2,9 @@
 Offline visualizer for biosignal CSV recordings (EMG) produced by CSVSink in BiotechKit.
 
 Usage:
-    python view_csv.py data/recordings/session_001.csv
-    python view_csv.py data/recordings/session_001.csv --time-col timestamp --channels ch0 ch1
-    python view_csv.py data/recordings/session_001.csv --sample-rate 500
+    python view_csv.py data/recordings/emg_data_YYYYMMDD_HHMMSS.csv
+    python view_csv.py data/recordings/emg_data_YYYYMMDD_HHMMSS.csv --time-col timestamp --channels ch0 ch1
+    python view_csv.py data/recordings/emg_data_YYYYMMDD_HHMMSS.csv --sample-rate 500
 
 This script is NOT part of BK's core architecture — it's a temporary
 diagnostic tool. Its only job is to let you quickly eyeball what was
