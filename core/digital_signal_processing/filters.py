@@ -74,3 +74,20 @@ class NotchFilter(Filter):
 
     def reset(self) -> None:
         self._zi = None
+
+
+class RectificationFilter(Filter):
+    """Full-wave rectifier: converts signal to absolute values.
+
+    Typical use: EMG envelope detection. Converts bipolar EMG signal
+    (oscillating around zero) to unipolar (all positive values),
+    which is a standard preprocessing step before envelope extraction
+    or smoothing.
+    """
+
+    def process(self, value: float) -> float:
+        return abs(value)
+
+    def reset(self) -> None:
+        # Stateless filter - nothing to reset
+        pass
