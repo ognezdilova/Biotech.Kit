@@ -15,7 +15,7 @@ import sys
 import serial
 
 from core.digital_signal_processing.dsp_base import SignalProcessor
-from core.digital_signal_processing.filters import BandpassFilter, NotchFilter
+from core.digital_signal_processing.filters import BandpassFilter, NotchFilter, RectificationFilter
 from core.session import AcquisitionSession
 from app.devices.serial_device import SerialDevice, list_available_ports
 from app.parsers.esp32_emg_parser import ESP32EMGParser
@@ -67,7 +67,7 @@ def main() -> None:
     # Raw data sink (always preserved unmodified)
     raw_sink = CSVSink(output_dir="data/recordings")
     
-    # DSP chain: notch filter (powerline rejection) -> bandpass (EMG band isolation)
+    # DSP chain: notch filter (powerline rejection) -> bandpass (EMG band isolation) -> rectification (envelope prep)
     processor = SignalProcessor(
         filters=[
             NotchFilter(notch_hz=POWERLINE_FREQ_HZ, sample_rate_hz=SAMPLE_RATE_HZ),
@@ -77,6 +77,7 @@ def main() -> None:
                 sample_rate_hz=SAMPLE_RATE_HZ,
                 order=EMG_BANDPASS_ORDER,
             ),
+            RectificationFilter(),
         ]
     )
     
