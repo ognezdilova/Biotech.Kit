@@ -15,7 +15,12 @@ import sys
 import serial
 
 from core.digital_signal_processing.dsp_base import SignalProcessor
-from core.digital_signal_processing.filters import BandpassFilter, NotchFilter
+from core.digital_signal_processing.filters import (
+    BandpassFilter,
+    LowpassFilter,
+    NotchFilter,
+    RectificationFilter,
+)
 from core.session import AcquisitionSession
 from app.devices.serial_device import SerialDevice, list_available_ports
 from app.parsers.esp32_emg_parser import ESP32EMGParser
@@ -27,6 +32,7 @@ POWERLINE_FREQ_HZ = 60.0  # 60 Hz for North America (use 50.0 for most other reg
 EMG_BANDPASS_LOW_HZ = 20.0
 EMG_BANDPASS_HIGH_HZ = 400.0
 EMG_BANDPASS_ORDER = 4
+ENVELOPE_LOWPASS_HZ = 8.0  # Envelope smoothing cutoff (6-10 Hz typical for EMG)
 
 
 def main() -> None:
@@ -67,7 +73,8 @@ def main() -> None:
     # Raw data sink (always preserved unmodified)
     raw_sink = CSVSink(output_dir="data/recordings")
     
-    # DSP chain: notch filter (powerline rejection) -> bandpass (EMG band isolation)
+    # DSP chain: notch -> bandpass -> rectification -> lowpass envelope
+
     processor = SignalProcessor(
         filters=[
             NotchFilter(notch_hz=POWERLINE_FREQ_HZ, sample_rate_hz=SAMPLE_RATE_HZ),
@@ -77,6 +84,8 @@ def main() -> None:
                 sample_rate_hz=SAMPLE_RATE_HZ,
                 order=EMG_BANDPASS_ORDER,
             ),
+            RectificationFilter(),
+            LowpassFilter(cutoff_hz=ENVELOPE_LOWPASS_HZ, sample_rate_hz=SAMPLE_RATE_HZ),
         ]
     )
     

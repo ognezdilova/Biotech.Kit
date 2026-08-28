@@ -74,3 +74,56 @@ class NotchFilter(Filter):
 
     def reset(self) -> None:
         self._zi = None
+
+
+class RectificationFilter(Filter):
+    """Full-wave rectifier: converts signal to absolute values.
+
+    Typical use: EMG envelope detection. Converts bipolar EMG signal
+    (oscillating around zero) to unipolar (all positive values),
+    which is a standard preprocessing step before envelope extraction
+    or smoothing.
+    """
+
+    def process(self, value: float) -> float:
+        return abs(value)
+
+    def reset(self) -> None:
+        # Stateless filter - nothing to reset
+        pass
+
+
+class LowpassFilter(Filter):
+    """Butterworth low-pass filter for signal smoothing.
+
+    Smoothes rectified EMG to extract a continuous
+    activation envelope. Applied after rectification to create a
+    smooth, low-latency envelope suitable for real-time visualization
+    or control applications.
+
+    Common cutoff frequencies for EMG envelope:
+    - 6-10 Hz: standard for most applications
+    - 3-5 Hz: very smooth, higher latency
+    - 10-15 Hz: faster response, less smooth
+    """
+
+    def __init__(
+        self,
+        cutoff_hz: float,
+        sample_rate_hz: float,
+        order: int = 4,
+    ) -> None:
+        self._sample_rate_hz = sample_rate_hz
+        nyquist = sample_rate_hz / 2.0
+        self._b, self._a = butter(order, cutoff_hz / nyquist, btype="low")
+        self._zi_template = lfilter_zi(self._b, self._a)
+        self._zi: np.ndarray | None = None
+
+    def process(self, value: float) -> float:
+        if self._zi is None:
+            self._zi = self._zi_template * value
+        out, self._zi = lfilter(self._b, self._a, [value], zi=self._zi)
+        return float(out[0])
+
+    def reset(self) -> None:
+        self._zi = None
