@@ -1,38 +1,44 @@
-"""Orchestrates the acquisition flow: device -> parser -> sinks."""
+"""Orchestrates the acquisition flow: device -> parser -> consumers.
 
+Acquisition runs continuously, emitting samples to registered consumers.
+Consumers handle their own lifecycle (e.g., recording start/stop, visualization).
+"""
+
+from core.consumer import SampleConsumer
 from core.device import AcquisitionDevice
 from core.digital_signal_processing.dsp_base import SignalProcessor
 from core.parser import SignalParser
-from core.sink import DataSink
 
 
 class AcquisitionSession:
-    """Ties together a device, a parser, one or more sinks, and an optional signal processor.
+    """Ties together a device, a parser, and sample consumers.
 
-    Raw samples always go to `sinks` unmodified. If a `processor` is
+    Raw samples are emitted to all `consumers`. If a `processor` is
     provided, each raw sample is additionally run through it and the
-    filtered result is sent to `processed_sinks`. This keeps recorded
-    raw data untouched regardless of filter design, so DSP experiments
-    can always be re-run against the same original recording.
+    filtered result is sent to `processed_consumers`. This keeps raw
+    and processed data flows independent.
 
-    The session depends only on the abstract interfaces, never on
-    concrete implementations, so device/parser/sinks/processor can be swapped
-    independently of each other and of this class.
+    Acquisition runs continuously regardless of consumer state (e.g.,
+    recording may be stopped while acquisition continues). Consumers
+    manage their own lifecycle independently.
+
+    The session depends only on abstract interfaces, so device/parser/
+    consumers/processor can be swapped independently.
     """
 
     def __init__(
         self,
         device: AcquisitionDevice,
         parser: SignalParser,
-        sinks: list[DataSink],
+        consumers: list[SampleConsumer] | None = None,
         processor: SignalProcessor | None = None,
-        processed_sinks: list[DataSink] | None = None,
+        processed_consumers: list[SampleConsumer] | None = None,
     ) -> None:
         self._device = device
         self._parser = parser
-        self._sinks = sinks
+        self._consumers = consumers or []
         self._processor = processor
-        self._processed_sinks = processed_sinks or []
+        self._processed_consumers = processed_consumers or []
         self._sample_count = 0
 
     @property
@@ -40,20 +46,14 @@ class AcquisitionSession:
         return self._sample_count
 
     def run(self) -> None:
-        """Run the acquisition loop. Blocking call."""
+        """Run the acquisition loop. Blocking call.
+        
+        Continuously reads from device, parses samples, and emits to
+        all registered consumers. Consumers manage their own lifecycle
+        (the session does not open/close them).
+        """
         with self._device:
-            for sink in self._sinks:
-                sink.open()
-            for sink in self._processed_sinks:
-                sink.open()
-
-            try:
-                self._loop()
-            finally:
-                for sink in self._sinks:
-                    sink.close()
-                for sink in self._processed_sinks:
-                    sink.close()
+            self._loop()
 
     def _loop(self) -> None:
         while True:
@@ -65,14 +65,16 @@ class AcquisitionSession:
             if sample is None:
                 continue
 
-            for sink in self._sinks:
-                sink.write(sample)
+            # Emit raw sample to all consumers
+            for consumer in self._consumers:
+                consumer.consume(sample)
 
+            # If processor exists, emit filtered sample to processed consumers
             if self._processor is not None:
                 filtered_sample = self._processor.process(sample)
-                for sink in self._processed_sinks:
-                    sink.write(filtered_sample)
+                for consumer in self._processed_consumers:
+                    consumer.consume(filtered_sample)
 
             self._sample_count += 1
             if self._sample_count % 1000 == 0:
-                print(f"Recorded {self._sample_count} samples...")
+                print(f"Processed {self._sample_count} samples...")
