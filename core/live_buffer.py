@@ -8,7 +8,7 @@ from core.consumer import SampleConsumer
 from core.digital_signal_processing.buffering import RingBuffer
 from core.models import Sample
 
-class RollingBuffer(SampleConsumer):
+class RollingBufferConsumer(SampleConsumer):
     """
     Thread-safe rolling buffer for live data streams.
     Safe to write from one thread (acquisition)
