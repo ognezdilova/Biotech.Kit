@@ -20,7 +20,10 @@ This project is currently under continuous development. Features, architecture, 
 
 ## Current Features
 
-* **Modular Architecture**: Abstract interfaces for devices, parsers, and data sinks
+* **Consumer-Based Architecture**: Decoupled acquisition, recording, and visualization via abstract consumer interfaces
+* **Independent Acquisition**: Continuous data acquisition regardless of recording or visualization state
+* **Explicit Recording Lifecycle**: Start/stop recording independently with `RecordingController` while acquisition continues
+* **Modular Architecture**: Abstract interfaces for devices, parsers, data sinks, and sample consumers
 * **Real-time EMG Acquisition**: Live streaming from ESP32-based hardware over serial (UART)
 * **Real-time DSP Processing**: Complete EMG envelope extraction pipeline
   - Notch filter (powerline rejection)
@@ -33,7 +36,7 @@ This project is currently under continuous development. Features, architecture, 
 * **Envelope Detection**: Continuous, low-latency envelope extraction via rectification + low-pass filtering
 * **Recording Replay**: ReplayDevice for offline analysis and DSP validation
 * **CSV Recording**: Timestamped data files with automatic directory management
-* **Multiple Data Sinks**: Support for simultaneous data outputs (CSV, future: real-time plots, databases)
+* **Multiple Data Consumers**: Support for simultaneous independent consumers (recording, visualization, analysis)
 * **CLI Port Selection**: Flexible port selection with auto-detection fallback
 * **Robust Serial Communication**: Hardware flow control disabled for Windows compatibility
 * **Progress Monitoring**: Real-time sample counting during acquisition
@@ -76,7 +79,7 @@ This project is currently under continuous development. Features, architecture, 
 
 ## Project Structure
 
-The project follows a **dependency inversion** architecture with abstract interfaces:
+The project follows a **dependency inversion** and **consumer pattern** architecture with abstract interfaces:
 
 ```
 BiotechKit/
@@ -94,7 +97,9 @@ BiotechKit/
 │   ├── device.py                  # AcquisitionDevice interface
 │   ├── parser.py                  # SignalParser interface
 │   ├── sink.py                    # DataSink interface
-│   ├── session.py                 # Orchestrates device → parser → sinks
+│   ├── consumer.py                # SampleConsumer interface (new)
+│   ├── recording.py               # RecordingController, consumer adapters (new)
+│   ├── session.py                 # Orchestrates device → parser → consumers
 │   ├── models.py                  # Sample dataclass
 │   ├── replay_device.py           # CSV replay device implementation
 │   └── digital_signal_processing/ # DSP layer
@@ -167,6 +172,36 @@ Rectified Signal → WindowBuffer (256 samples, 128 hop) → RMSProcessor → Di
 ```
 
 This provides an alternative envelope extraction approach (RMS) useful for research comparisons and offline analysis.
+
+---
+
+## Architecture: Consumer Pattern
+
+BK uses a **consumer-based architecture** to separate concerns:
+
+```
+Acquisition (continuous) ──→ SampleConsumer(s) ──→ Independent actions
+                              │
+                              ├──→ RecordingController (start/stop lifecycle)
+                              ├──→ Visualization (always-on, future)
+                              └──→ Real-time analysis (future)
+```
+
+**Key Design Principles:**
+
+1. **Acquisition is independent**: `AcquisitionSession` runs continuously, reading from device and emitting samples to registered consumers, regardless of whether recording is active or visualization is running.
+
+2. **Recording has explicit lifecycle**: `RecordingController` provides `start_recording()` and `stop_recording()` methods. Data is only written to sinks while recording is active. Acquisition continues even when recording is stopped.
+
+3. **Consumers are independent**: Multiple consumers (recording, visualization, analysis) can operate simultaneously without coupling. Each consumer receives every sample and decides internally what to do with it.
+
+4. **Backward compatibility**: Legacy `DataSink` implementations (like `WindowBuffer`, `CSVSink`) work seamlessly via the `SinkConsumer` adapter.
+
+**Benefits:**
+- Start/stop recording without restarting acquisition
+- Add real-time visualization that runs independently of recording state
+- Multiple consumers can process the same live signal stream in parallel
+- Clean separation of concerns (acquisition ≠ recording ≠ visualization)
 
 ---
 

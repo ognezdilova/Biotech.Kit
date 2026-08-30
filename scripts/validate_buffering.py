@@ -30,6 +30,7 @@ from core.replay_device import ReplayDevice
 from app.parsers.esp32_emg_parser import ESP32EMGParser
 
 from core.digital_signal_processing.buffering import Window, WindowBuffer
+from core.recording import SinkConsumer
 from core.session import AcquisitionSession
 
 
@@ -92,13 +93,16 @@ def main() -> int:
         on_window=lambda window: _on_window(window, stats),
     )
 
+    # Wrap WindowBuffer as a consumer (auto_open=False since we manage manually)
+    buffer_consumer = SinkConsumer(window_buffer, auto_open=False)
+
     device = ReplayDevice(args.csv_path, speed=0)
     signal_parser = ESP32EMGParser()
 
     session = AcquisitionSession(
         device=device,
         parser=signal_parser,
-        sinks=[window_buffer],
+        consumers=[buffer_consumer],
     )
 
     """Custom replay loop: ReplayDevice.read_line() returns None at EOF,
@@ -106,7 +110,7 @@ def main() -> int:
         which would loop forever. So the program runs the device/parsing manually."""
 
     with device:
-        window_buffer.open()
+        buffer_consumer.open()
         try:
             while True:
                 raw_line = device.read_line()
@@ -116,12 +120,12 @@ def main() -> int:
                 
                 sample = signal_parser.parse(raw_line)
                 if sample is not None:
-                    window_buffer.write(sample)
+                    buffer_consumer.consume(sample)
                     session._sample_count += 1
                     if session.sample_count % 1000 == 0:
                         print(f"Processed {session.sample_count} samples...")
         finally:
-            window_buffer.close()
+            buffer_consumer.close()
 
     if not stats:
         print(

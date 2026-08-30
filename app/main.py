@@ -21,6 +21,7 @@ from core.digital_signal_processing.filters import (
     NotchFilter,
     RectificationFilter,
 )
+from core.recording import RecordingController, RecordingSampleConsumer
 from core.session import AcquisitionSession
 from app.devices.serial_device import SerialDevice, list_available_ports
 from app.parsers.esp32_emg_parser import ESP32EMGParser
@@ -92,22 +93,39 @@ def main() -> None:
     # Filtered data sink (separate file with "_filtered" suffix)
     filtered_sink = CSVSink(output_dir="data/recordings", filename_suffix="_filtered")
     
+    # Recording controllers with explicit lifecycle
+    raw_recording = RecordingController(sinks=[raw_sink])
+    filtered_recording = RecordingController(sinks=[filtered_sink])
+    
+    # Wrap recording controllers as sample consumers
+    raw_consumer = RecordingSampleConsumer(raw_recording)
+    filtered_consumer = RecordingSampleConsumer(filtered_recording)
+    
     session = AcquisitionSession(
         device=device,
         parser=parser,
-        sinks=[raw_sink],
+        consumers=[raw_consumer],
         processor=processor,
-        processed_sinks=[filtered_sink],
+        processed_consumers=[filtered_consumer],
     )
 
+    # Start recording explicitly before running acquisition
+    raw_recording.start_recording()
+    filtered_recording.start_recording()
+    
     print("Press Ctrl+C to stop recording...\n")
     try:
         session.run()
         
     except KeyboardInterrupt:
-        print(f"\nRecording stopped. Total samples: {session.sample_count}")
+        print(f"\nStopping recording...")
+        raw_recording.stop_recording()
+        filtered_recording.stop_recording()
+        print(f"Total samples: {session.sample_count}")
     except (ConnectionError, serial.SerialException) as e:
         print(f"Connection error: {e}")
+        raw_recording.stop_recording()
+        filtered_recording.stop_recording()
 
 
 if __name__ == "__main__":
