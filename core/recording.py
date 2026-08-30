@@ -39,7 +39,7 @@ class RecordingController:
         return self._is_recording
 
     def start_recording(self) -> None:
-        """Start recording - opens all sinks.
+        """Start recording -> opens all sinks.
         
         If already recording, this is a no-op.
         """
