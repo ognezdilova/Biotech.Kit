@@ -7,6 +7,8 @@ thread; does not touch acquisition/session logic directly.
 
 """
 
+import threading
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -19,10 +21,13 @@ class StreamPlotter:
             processed_buffer: RollingBufferConsumer,
             channels: list[int] | None = None,
             refresh_interval_ms: int = 50,
+            watch_thread: "threading.Thread | None" = None,
             ) -> None:
         self._raw_buffer = raw_buffer
         self._processed_buffer = processed_buffer
         self._channels = channels or [0]
+        self._refresh_interval_ms = refresh_interval_ms
+        self._watch_thread = watch_thread
 
         self._fig, (self._ax_raw, self._ax_proc) = plt.subplots(
             2, 1, figsize=(10, 6), sharex=False
@@ -45,6 +50,10 @@ class StreamPlotter:
         self._anim: FuncAnimation | None = None
 
     def _update(self, _frame):
+        if self._watch_thread is not None and not self._watch_thread.is_alive():
+            plt.close(self._fig)
+            return []
+        
         artists = []
         artists += self._refresh(self._ax_raw, self._raw_buffer, self._raw_lines)
         artists += self._refresh(self._ax_proc, self._processed_buffer, self._proc_lines)
