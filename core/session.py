@@ -4,6 +4,8 @@ Acquisition runs continuously, emitting samples to registered consumers.
 Consumers handle their own lifecycle (e.g., recording start/stop, visualization).
 """
 
+import threading
+
 from core.consumer import SampleConsumer
 from core.device import AcquisitionDevice
 from core.digital_signal_processing.dsp_base import SignalProcessor
@@ -40,6 +42,7 @@ class AcquisitionSession:
         self._processor = processor
         self._processed_consumers = processed_consumers or []
         self._sample_count = 0
+        self._stop_event = threading.Event()
 
     @property
     def sample_count(self) -> int:
@@ -56,7 +59,7 @@ class AcquisitionSession:
             self._loop()
 
     def _loop(self) -> None:
-        while True:
+        while not self._stop_event.is_set():
             raw_line = self._device.read_line()
             if not raw_line:
                 continue
