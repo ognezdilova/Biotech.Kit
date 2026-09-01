@@ -15,6 +15,7 @@ independent ring buffer and windowing cadence.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import threading
 
 import numpy as np
 
@@ -38,6 +39,7 @@ class RingBuffer:
         self._data = np.zeros(capacity, dtype=dtype)
         self._write_index = 0
         self._count = 0
+        self._lock = threading.Lock()
 
     @property
     def capacity(self) -> int:
@@ -45,31 +47,36 @@ class RingBuffer:
 
     @property
     def count(self) -> int:
-        return self._count
+        with self._lock:
+            return self._count
 
     def is_full(self) -> bool:
-        return self._count >= self._capacity
+        with self._lock:
+            return self._count >= self._capacity
 
     def push(self, value) -> None:
-        # pushes new value, overwriting oldest if full
-        self._data[self._write_index] = value
-        self._write_index = (self._write_index + 1) % self._capacity
-        self._count = min(self._count + 1, self._capacity)
+        with self._lock:
+            # pushes new value, overwriting oldest if full
+            self._data[self._write_index] = value
+            self._write_index = (self._write_index + 1) % self._capacity
+            self._count = min(self._count + 1, self._capacity)
 
     def snapshot(self) -> np.ndarray:
         """Return buffered values in chronological order (oldest -> newest)."""
-        if self._count < self._capacity:
-            return self._data[: self._count].copy()
-        # Full and circular: the oldest sample sits at _write_index
-        # (the slot about to be overwritten next).
-        return np.concatenate(
-            (self._data[self._write_index :], self._data[: self._write_index])
-        )
+        with self._lock:
+            if self._count < self._capacity:
+                return self._data[: self._count].copy()
+            # Full and circular: the oldest sample sits at _write_index
+            # (the slot about to be overwritten next).
+            return np.concatenate(
+                (self._data[self._write_index :], self._data[: self._write_index])
+            )
 
     def clear(self) -> None:
-        self._data.fill(0)
-        self._write_index = 0
-        self._count = 0
+        with self._lock:
+            self._data.fill(0)
+            self._write_index = 0
+            self._count = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +152,7 @@ class WindowBuffer:
         self._value_buffers: dict[int, RingBuffer] = {}
         self._timestamp_buffers: dict[int, RingBuffer] = {}
         self._since_last_window: dict[int, int] = {}
+    self._lock = threading.Lock()
 
     @property
     def window_size(self) -> int:
@@ -155,7 +163,8 @@ class WindowBuffer:
         return self._hop_size
 
     def channels(self) -> list[int]:
-        return list(self._value_buffers.keys())
+        with self._lock:
+            return list(self._value_buffers.keys())
 
     # DataSink interface 
 
@@ -166,29 +175,32 @@ class WindowBuffer:
         """Nothing to close; buffers simply stop receiving new data."""
 
     def write(self, sample: Sample) -> None:
-        channel = sample.channel
-        values = self._value_buffers.get(channel)
-        if values is None:
-            values = RingBuffer(self._window_size, dtype=np.float64)
-            timestamps = RingBuffer(self._window_size, dtype=np.int64)
-            self._value_buffers[channel] = values
-            self._timestamp_buffers[channel] = timestamps
-            self._since_last_window[channel] = 0
-        timestamps = self._timestamp_buffers[channel]
+        window: Window | None = None
+        with self._lock:
+            channel = sample.channel
+            values = self._value_buffers.get(channel)
+            if values is None:
+                values = RingBuffer(self._window_size, dtype=np.float64)
+                timestamps = RingBuffer(self._window_size, dtype=np.int64)
+                self._value_buffers[channel] = values
+                self._timestamp_buffers[channel] = timestamps
+                self._since_last_window[channel] = 0
+            timestamps = self._timestamp_buffers[channel]
 
-        values.push(float(sample.value))
-        timestamps.push(sample.timestamp_us)
-        self._since_last_window[channel] += 1
+            values.push(float(sample.value))
+            timestamps.push(sample.timestamp_us)
+            self._since_last_window[channel] += 1
 
-        if values.is_full() and self._since_last_window[channel] >= self._hop_size:
-            self._since_last_window[channel] = 0
-            window = Window(
-                channel=channel,
-                values=values.snapshot(),
-                timestamps_us=timestamps.snapshot(),
-            )
-            if self._on_window is not None:
-                self._on_window(window)
+            if values.is_full() and self._since_last_window[channel] >= self._hop_size:
+                self._since_last_window[channel] = 0
+                window = Window(
+                    channel=channel,
+                    values=values.snapshot(),
+                    timestamps_us=timestamps.snapshot(),
+                )
+
+        if window is not None and self._on_window is not None:
+            self._on_window(window)
 
     # pull-based access 
 
@@ -196,12 +208,13 @@ class WindowBuffer:
         """Return the most recent full window for a channel, or None
         if that channel hasn't accumulated `window_size` samples yet.
         """
-        values = self._value_buffers.get(channel)
-        if values is None or not values.is_full():
-            return None
-        timestamps = self._timestamp_buffers[channel]
-        return Window(
-            channel=channel,
-            values=values.snapshot(),
-            timestamps_us=timestamps.snapshot(),
-        )
+        with self._lock:
+            values = self._value_buffers.get(channel)
+            if values is None or not values.is_full():
+                return None
+            timestamps = self._timestamp_buffers[channel]
+            return Window(
+                channel=channel,
+                values=values.snapshot(),
+                timestamps_us=timestamps.snapshot(),
+            )
