@@ -32,13 +32,16 @@ This project is currently under continuous development. Features, architecture, 
   - Low-pass filter (continuous envelope smoothing)
 * **Block-based Signal Processing**: WindowBuffer for windowed analysis (RMS, FFT-ready)
 * **Windowing & Buffering**: Efficient circular buffering with configurable window sizes and overlap
+* **Thread-Safe Live Buffers**: RollingBufferConsumer and WindowBuffer support concurrent plotting and acquisition
 * **RMS Processor**: Root-mean-square amplitude computation for muscle activation measurement
 * **Envelope Detection**: Continuous, low-latency envelope extraction via rectification + low-pass filtering
 * **Recording Replay**: ReplayDevice for offline analysis and DSP validation
 * **CSV Recording**: Timestamped data files with automatic directory management
 * **Multiple Data Consumers**: Support for simultaneous independent consumers (recording, visualization, analysis)
+* **Live Matplotlib Visualization**: Real-time raw and processed EMG plots in `app.main`
 * **CLI Port Selection**: Flexible port selection with auto-detection fallback
 * **Robust Serial Communication**: Hardware flow control disabled for Windows compatibility
+* **Graceful Shutdown**: Ctrl+C and plot-window close both stop live acquisition cleanly
 * **Progress Monitoring**: Real-time sample counting during acquisition
 * **Error Handling**: Graceful handling of malformed data and connection issues
 * **Validation Tools**: Offline DSP validation, envelope comparison, buffering validation, and CSV visualization scripts
@@ -47,7 +50,6 @@ This project is currently under continuous development. Features, architecture, 
 
 ## Planned Features
 
-* Real-time visualization (matplotlib integration)
 * Advanced signal processing modules (spectral analysis, FFT, frequency-domain features)
 * Multi-channel biosignal acquisition
 * Machine learning integration for signal classification
@@ -224,6 +226,8 @@ Acquisition (continuous) ──→ SampleConsumer(s) ──→ Independent actio
    ```
 
 4. **Stop recording** with `Ctrl+C`
+
+The live acquisition UI opens a Matplotlib window that shows both the raw signal and the processed envelope in real time while the acquisition thread continues in the background.
 
 Data will be saved to:
 - `data/recordings/emg_data_YYYYMMDD_HHMMSS.csv` (raw ADC values)
