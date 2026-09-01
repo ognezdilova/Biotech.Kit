@@ -1,3 +1,24 @@
+## Version 0.3.0 - Live Visualization and Buffering Hardening
+
+### Major Changes
+- **Live Matplotlib Visualization**: Added real-time raw and processed signal plotting in `app.main`
+  - Separate rolling buffers for raw and filtered streams
+  - Acquisition continues in a background thread while plots update in the foreground
+  - Smooth shutdown behavior when closing the plot window or pressing Ctrl+C
+- **Thread-Safe Buffering**: Hardened `RingBuffer` and `WindowBuffer` for concurrent access
+  - Added locking around buffer mutation and snapshot reads
+  - Safe for live plotting readers alongside the acquisition writer
+- **Processed Plot Scaling Improvements**: Kept the processed envelope baseline anchored near zero
+  - Reduced confusing autoscaling behavior during relaxation/activation transitions
+  - Better suited for quick visual EMG testing before multi-channel work
+
+### Testing and Validation
+- Confirmed live raw and processed plots run alongside acquisition
+- Verified buffering changes with syntax/error checks after adding locks
+- Marked the thread-safety buffering tech debt item as resolved
+
+---
+
 ## Version 0.2.0 - DSP Integration and Replay Capability
 
 ### Major Changes

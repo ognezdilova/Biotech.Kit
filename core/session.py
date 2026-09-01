@@ -4,6 +4,8 @@ Acquisition runs continuously, emitting samples to registered consumers.
 Consumers handle their own lifecycle (e.g., recording start/stop, visualization).
 """
 
+import threading
+
 from core.consumer import SampleConsumer
 from core.device import AcquisitionDevice
 from core.digital_signal_processing.dsp_base import SignalProcessor
@@ -40,10 +42,15 @@ class AcquisitionSession:
         self._processor = processor
         self._processed_consumers = processed_consumers or []
         self._sample_count = 0
+        self._stop_event = threading.Event()
 
     @property
     def sample_count(self) -> int:
         return self._sample_count
+
+    def stop(self) -> None:
+        """Signal the acquisition loop to stop gracefully."""
+        self._stop_event.set()
 
     def run(self) -> None:
         """Run the acquisition loop. Blocking call.
@@ -56,7 +63,7 @@ class AcquisitionSession:
             self._loop()
 
     def _loop(self) -> None:
-        while True:
+        while not self._stop_event.is_set():
             raw_line = self._device.read_line()
             if not raw_line:
                 continue
@@ -70,6 +77,7 @@ class AcquisitionSession:
                 consumer.consume(sample)
 
             # If processor exists, emit filtered sample to processed consumers
+            filtered_sample = None
             if self._processor is not None:
                 filtered_sample = self._processor.process(sample)
                 for consumer in self._processed_consumers:
@@ -78,3 +86,7 @@ class AcquisitionSession:
             self._sample_count += 1
             if self._sample_count % 1000 == 0:
                 print(f"Processed {self._sample_count} samples...")
+                # Debug: show sample values to verify data flow
+                if self._sample_count == 1000:
+                    filt_val = f"{filtered_sample.value:.2f}" if filtered_sample else "N/A"
+                    print(f"  Sample check - Raw: {sample.value:.2f}, Filtered: {filt_val}")
