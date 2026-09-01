@@ -10,6 +10,7 @@ This will list the available COM ports, connect to the specified device, and sta
 
 
 import argparse
+import signal
 import sys
 import threading
 import serial
@@ -134,18 +135,33 @@ def main() -> None:
     acquisition_thread = threading.Thread(target=_run_session, daemon=True)
     acquisition_thread.start()
 
+    # Set up signal handler for graceful shutdown on Ctrl+C
+    shutdown_requested = threading.Event()
+    
+    def signal_handler(signum, frame):
+        print("\nShutdown requested (Ctrl+C)...")
+        shutdown_requested.set()
+        session.stop()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+
     plotter = StreamPlotter(
         raw_plot_buffer,
         processed_plot_buffer,
         channels=[0],
         watch_thread=acquisition_thread,
+        raw_ylim=(0, 4095),  # 12-bit ADC range
+        processed_ylim=None,  # Auto-scale to see actual filtered values
     )
+    
     try:
         plotter.start()  # blocks until window closed (by user OR by watch_thread check)
     except KeyboardInterrupt:
-        pass
+        print("\nInterrupted...")
     finally:
-        session.stop()
+        if not shutdown_requested.is_set():
+            session.stop()
+        
         acquisition_thread.join(timeout=2.0)
 
         print("\nStopping recording...")
