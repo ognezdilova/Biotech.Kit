@@ -152,7 +152,7 @@ class WindowBuffer:
         self._value_buffers: dict[int, RingBuffer] = {}
         self._timestamp_buffers: dict[int, RingBuffer] = {}
         self._since_last_window: dict[int, int] = {}
-    self._lock = threading.Lock()
+        self._lock = threading.Lock()
 
     @property
     def window_size(self) -> int:
