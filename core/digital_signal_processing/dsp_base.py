@@ -1,6 +1,7 @@
 """Abstract base for DSP filter stages and the composable SignalProcessor."""
 
 from abc import ABC, abstractmethod
+import copy
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -47,6 +48,7 @@ class SignalProcessor:
 
     def __init__(self, filters: list[Filter]) -> None:
         self._filters = filters
+        self._filters_by_channel: dict[int, list[Filter]] = {}
 
     def process_value(self, value: float) -> float:
         """Run a raw numeric value through the full filter chain.
@@ -65,8 +67,14 @@ class SignalProcessor:
         Returns a new Sample with the filtered value; the input
         Sample is never mutated (Sample is frozen).
         """
+        filters = self._filters_by_channel.get(sample.channel)
+        if filters is None:
+            # Keep channel states fully independent for interleaved streams.
+            filters = copy.deepcopy(self._filters)
+            self._filters_by_channel[sample.channel] = filters
+
         value: float = float(sample.value)
-        for f in self._filters:
+        for f in filters:
             value = f.process(value)
         return replace(sample, value=value)
 
@@ -74,6 +82,10 @@ class SignalProcessor:
         """Reset all filters in the chain (e.g. between sessions)."""
         for f in self._filters:
             f.reset()
+        for channel_filters in self._filters_by_channel.values():
+            for f in channel_filters:
+                f.reset()
+        self._filters_by_channel.clear()
 
 class BlockProcessor(ABC):
     """A single, stateless-by-default, block-based signal-processing stage.
