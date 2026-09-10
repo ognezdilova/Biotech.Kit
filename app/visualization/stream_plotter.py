@@ -139,4 +139,79 @@ class StreamPlotter:
         plt.show(block=True)
 
 
+class DualChannelRawPlotter:
+    """Minimal live plotter with exactly two raw channel subplots."""
+
+    def __init__(
+        self,
+        raw_buffer: RollingBufferConsumer,
+        channels: tuple[int, int] = (0, 1),
+        refresh_interval_ms: int = 50,
+        watch_thread: "threading.Thread | None" = None,
+        raw_ylim: tuple[float, float] | None = None,
+    ) -> None:
+        self._raw_buffer = raw_buffer
+        self._ch1, self._ch2 = channels
+        self._refresh_interval_ms = refresh_interval_ms
+        self._watch_thread = watch_thread
+
+        self._fig, (self._ax1, self._ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=False)
+        self._fig.suptitle("Live Raw EMG (Press Ctrl+C in terminal or close window to stop)")
+
+        self._ax1.set_title(f"Channel {self._ch1 + 1} Raw")
+        self._ax1.set_ylabel("ADC value")
+        self._ax2.set_title(f"Channel {self._ch2 + 1} Raw")
+        self._ax2.set_xlabel("Time (s)")
+        self._ax2.set_ylabel("ADC value")
+
+        if raw_ylim is not None:
+            self._ax1.set_ylim(raw_ylim)
+            self._ax2.set_ylim(raw_ylim)
+        else:
+            self._ax1.set_ylim(0, 4095)
+            self._ax2.set_ylim(0, 4095)
+
+        self._ax1.set_xlim(0, 2)
+        self._ax2.set_xlim(0, 2)
+
+        self._line1 = self._ax1.plot([], [])[0]
+        self._line2 = self._ax2.plot([], [])[0]
+        self._fig.tight_layout()
+        self._anim: FuncAnimation | None = None
+
+    def _update(self, _frame):
+        if self._watch_thread is not None and not self._watch_thread.is_alive():
+            plt.close(self._fig)
+            return []
+
+        artists = []
+        for channel, ax, line in (
+            (self._ch1, self._ax1, self._line1),
+            (self._ch2, self._ax2, self._line2),
+        ):
+            snap = self._raw_buffer.snapshot(channel)
+            if snap is None:
+                continue
+            timestamps_us, values = snap
+            if len(timestamps_us) == 0:
+                continue
+            t = (timestamps_us - timestamps_us[0]) / 1_000_000.0
+            line.set_data(t, values)
+            ax.relim()
+            ax.autoscale_view(scalex=True, scaley=False)
+            artists.append(line)
+
+        return artists
+
+    def start(self) -> None:
+        self._anim = FuncAnimation(
+            self._fig,
+            self._update,
+            interval=self._refresh_interval_ms,
+            blit=True,
+            cache_frame_data=False,
+        )
+        plt.show(block=True)
+
+
         
