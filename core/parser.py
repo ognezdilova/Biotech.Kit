@@ -21,3 +21,14 @@ class SignalParser(ABC):
         and must not raise an exception.
         """
         raise NotImplementedError
+
+    def parse_many(self, raw_line: str) -> list[Sample]:
+        """Parse one raw line into one or more Sample objects.
+
+        Default behavior preserves backward compatibility: call parse()
+        and wrap its single result into a list.
+        """
+        sample = self.parse(raw_line)
+        if sample is None:
+            return []
+        return [sample]
