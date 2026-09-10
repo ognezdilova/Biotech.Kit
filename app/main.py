@@ -29,7 +29,7 @@ from app.parsers.esp32_emg_parser import ESP32EMGParser
 from app.storage.csv_sink import CSVSink
 
 #visualization imports
-from app.visualization.stream_plotter import StreamPlotter
+from app.visualization.stream_plotter import DualChannelRawPlotter
 from core.live_buffer import RollingBufferConsumer
 
 # Hardware-specific configuration (ESP32 + BioAmp EXG)
@@ -108,14 +108,13 @@ def main() -> None:
     
     # Live monitoring buffers (rolling, for plotting - independent of recording)
     raw_plot_buffer = RollingBufferConsumer(capacity=2000)
-    processed_plot_buffer = RollingBufferConsumer(capacity=2000)
 
     session = AcquisitionSession(
         device=device,
         parser=parser,
         consumers=[raw_consumer, raw_plot_buffer],           
         processor=processor,
-        processed_consumers=[filtered_consumer, processed_plot_buffer],  
+        processed_consumers=[filtered_consumer],
     )
 
     # Start recording explicitly before running acquisition
@@ -145,13 +144,11 @@ def main() -> None:
     
     signal.signal(signal.SIGINT, signal_handler)
 
-    plotter = StreamPlotter(
-        raw_plot_buffer,
-        processed_plot_buffer,
-        channels=[0],
+    plotter = DualChannelRawPlotter(
+        raw_buffer=raw_plot_buffer,
+        channels=(0, 1),
         watch_thread=acquisition_thread,
         raw_ylim=(0, 4095),  # 12-bit ADC range
-        processed_ylim=None,  # Auto-scale to see actual filtered values
     )
     
     try:

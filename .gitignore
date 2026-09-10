@@ -25,3 +25,6 @@ firmware
 
 # Personal Use Files
 technical_debt.md
+
+#tests
+tests/test_multichannel_pipeline.py
