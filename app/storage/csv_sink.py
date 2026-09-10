@@ -35,7 +35,7 @@ class CSVSink(DataSink):
 
         self._file = open(self.filepath, "w", newline="")
         self._writer = csv.writer(self._file)
-        self._writer.writerow(["timestamp", "raw_value"])
+        self._writer.writerow(["timestamp", "raw_value", "channel"])
 
         print(f"Saving data to {self.filepath}")
 
@@ -43,7 +43,7 @@ class CSVSink(DataSink):
         if self._writer is None:
             raise RuntimeError("Sink is not open. Call open() first.")
 
-        self._writer.writerow([sample.timestamp_us, sample.value])
+        self._writer.writerow([sample.timestamp_us, sample.value, sample.channel])
 
         self._written += 1
         if self._written % self._flush_every == 0:
