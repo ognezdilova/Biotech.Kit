@@ -68,25 +68,26 @@ class AcquisitionSession:
             if not raw_line:
                 continue
 
-            sample = self._parser.parse(raw_line)
-            if sample is None:
+            samples = self._parser.parse_many(raw_line)
+            if not samples:
                 continue
 
-            # Emit raw sample to all consumers
-            for consumer in self._consumers:
-                consumer.consume(sample)
+            for sample in samples:
+                # Emit raw sample to all consumers
+                for consumer in self._consumers:
+                    consumer.consume(sample)
 
-            # If processor exists, emit filtered sample to processed consumers
-            filtered_sample = None
-            if self._processor is not None:
-                filtered_sample = self._processor.process(sample)
-                for consumer in self._processed_consumers:
-                    consumer.consume(filtered_sample)
+                # If processor exists, emit filtered sample to processed consumers
+                filtered_sample = None
+                if self._processor is not None:
+                    filtered_sample = self._processor.process(sample)
+                    for consumer in self._processed_consumers:
+                        consumer.consume(filtered_sample)
 
-            self._sample_count += 1
-            if self._sample_count % 1000 == 0:
-                print(f"Processed {self._sample_count} samples...")
-                # Debug: show sample values to verify data flow
-                if self._sample_count == 1000:
-                    filt_val = f"{filtered_sample.value:.2f}" if filtered_sample else "N/A"
-                    print(f"  Sample check - Raw: {sample.value:.2f}, Filtered: {filt_val}")
+                self._sample_count += 1
+                if self._sample_count % 1000 == 0:
+                    print(f"Processed {self._sample_count} samples...")
+                    # Debug: show sample values to verify data flow
+                    if self._sample_count == 1000:
+                        filt_val = f"{filtered_sample.value:.2f}" if filtered_sample else "N/A"
+                        print(f"  Sample check - Raw: {sample.value:.2f}, Filtered: {filt_val}")
