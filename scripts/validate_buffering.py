@@ -117,9 +117,9 @@ def main() -> int:
                 if raw_line is None:
                     # EOF reached
                     break
-                
-                sample = signal_parser.parse(raw_line)
-                if sample is not None:
+
+                samples = signal_parser.parse_many(raw_line)
+                for sample in samples:
                     buffer_consumer.consume(sample)
                     session._sample_count += 1
                     if session.sample_count % 1000 == 0:

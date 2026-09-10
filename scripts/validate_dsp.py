@@ -50,7 +50,10 @@ def main(csv_path: str) -> None:
             if line is None:
                 break  # ReplayDevice signals end of file this way
 
-            ts_str, raw_str = line.strip().split(",")
+            parts = line.strip().split(",")
+            if len(parts) < 2:
+                continue
+            ts_str, raw_str = parts[0], parts[1]
             timestamp_us = int(ts_str)
             raw_value = float(raw_str)
 
