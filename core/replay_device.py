@@ -18,8 +18,8 @@ class ReplayDevice(AcquisitionDevice):
     allowing configurable playback speed.
 
     Expected CSV format:
-        Header: timestamp,raw_value
-        Data rows: <timestamp_us>,<value>
+        Header: timestamp,raw_value[,channel]
+        Data rows: <timestamp_us>,<value>[,<channel>]
     """
 
     def __init__(
@@ -48,6 +48,7 @@ class ReplayDevice(AcquisitionDevice):
         self._use_synthetic_timing = False
         self._synthetic_interval_s: float | None = None
         self._row_count = 0
+        self._has_channel_column = False
 
     def open(self) -> None:
         """Open the CSV file and prepare for replay."""
@@ -70,6 +71,8 @@ class ReplayDevice(AcquisitionDevice):
                 f"CSV file has invalid header. Expected ['timestamp', 'raw_value'], "
                 f"got {header}"
             )
+
+        self._has_channel_column = len(header) >= 3 and header[2] == "channel"
 
         # Peek at first data row to check if timestamps are usable
         try:
@@ -129,11 +132,14 @@ class ReplayDevice(AcquisitionDevice):
             return None
 
         timestamp_str, value_str = row[0], row[1]
+        channel_str = row[2] if self._has_channel_column and len(row) >= 3 else None
 
         # Validate that we can parse the values
         try:
             timestamp_us = int(timestamp_str)
             int(value_str)  # Validate value is an integer
+            if channel_str is not None:
+                int(channel_str)
         except ValueError:
             # Malformed data, skip it
             return None
@@ -142,7 +148,9 @@ class ReplayDevice(AcquisitionDevice):
         self._handle_timing(timestamp_us)
 
         self._row_count += 1
-        return f"{timestamp_str},{value_str}"
+        if channel_str is None:
+            return f"{timestamp_str},{value_str}"
+        return f"{timestamp_str},{value_str},ch{channel_str}"
 
     def _handle_timing(self, timestamp_us: int) -> None:
         """Apply appropriate delay to respect original timing or playback speed."""
